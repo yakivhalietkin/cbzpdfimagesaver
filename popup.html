@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Image Grabber</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Image Grabber</h1>
+      <p id="status">Select images on the page.</p>
+    </div>
+    <button id="open-in-new-window" class="icon-button" title="Open as a window">↗</button>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <span>Selection mode</span>
+      <label class="switch" aria-label="Selection mode">
+        <input type="checkbox" id="select-mode">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="row">
+      <span>Format</span>
+      <div class="segmented">
+        <label><input type="radio" name="format" value="pdf" id="format-pdf" checked><span>PDF</span></label>
+        <label><input type="radio" name="format" value="cbz" id="format-cbz"><span>CBZ</span></label>
+      </div>
+    </div>
+    <div class="row" id="compression-row">
+      <label for="compression">PDF compression</label>
+      <input type="number" id="compression" min="0" max="100" step="1" value="95">
+    </div>
+    <div class="row">
+      <label for="min-width">Min. width</label>
+      <input type="number" id="min-width" min="0" step="1" value="50">
+    </div>
+    <div class="row">
+      <label for="min-height">Min. height</label>
+      <input type="number" id="min-height" min="0" step="1" value="50">
+    </div>
+  </section>
+
+  <section class="card selected-card">
+    <div class="section-header">
+      <div>
+        <strong><span id="image-count">0</span> selected</strong>
+        <span class="hint">Drag to reorder</span>
+      </div>
+      <button id="clear-selection" class="text-button">Clear</button>
+    </div>
+    <ol id="image-list" class="sortable-list"></ol>
+    <div id="empty-state" class="empty-state">No images selected yet.</div>
+  </section>
+
+  <button id="download" class="primary" disabled>Save</button>
+  <div id="error" class="error" hidden></div>
+
+  <script src="libs/sortable.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
