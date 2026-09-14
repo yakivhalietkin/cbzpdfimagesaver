@@ -18,10 +18,3 @@ Chrome Manifest V3 extension for selecting images directly on a webpage and down
 5. Choose **PDF** or **CBZ** and click **Save**.
 
 Selection mode uses an overlay, so images are not moved or reparented in the page DOM.
-
-## Notes
-
-- Images are fetched with extension host permissions and included credentials where the browser allows them.
-- PDF output normalizes browser-supported image formats through an offscreen canvas when possible.
-- CBZ is a ZIP archive containing sequentially numbered source images.
-- Very large selections can use substantial browser memory because PDF/ZIP files are assembled client-side.
