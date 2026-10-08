@@ -21,8 +21,34 @@
     });
   }
 
+  function resolveUrl(value) {
+    if (!value) return '';
+    try { return new URL(value, location.href).href; } catch (_) { return String(value); }
+  }
+
+  function getBestSrcsetUrl(image) {
+    const srcset = image.getAttribute('srcset') || image.getAttribute('data-srcset');
+    if (!srcset) return '';
+    const candidates = srcset.split(',').map(part => {
+      const bits = part.trim().split(/\s+/);
+      return { url: resolveUrl(bits[0]), descriptor: bits[1] || '' };
+    }).filter(x => x.url);
+    if (!candidates.length) return '';
+    const widths = candidates
+      .map(x => ({...x, width: /^([0-9]+)w$/.exec(x.descriptor)?.[1] ? Number(RegExp.$1) : 0}))
+      .sort((a,b) => b.width - a.width);
+    return widths[0].url || candidates[candidates.length - 1].url;
+  }
+
   function getImageUrl(image) {
-    return image.currentSrc || image.src || image.getAttribute('src') || image.getAttribute('data-src') || '';
+    return image.currentSrc ||
+      getBestSrcsetUrl(image) ||
+      image.getAttribute('data-src') ||
+      image.getAttribute('data-original') ||
+      image.getAttribute('data-lazy-src') ||
+      image.src ||
+      image.getAttribute('src') ||
+      '';
   }
 
   function getDisplayName(image, index) {
@@ -51,7 +77,9 @@
     const images = Array.from(selected.values()).map((entry, index) => ({
       url: entry.url,
       name: entry.name || `image-${String(index + 1).padStart(3, '0')}`,
-      position: index + 1
+      position: index + 1,
+      pageUrl: location.href,
+      frameUrl: location.href
     }));
     chrome.runtime.sendMessage({ action: 'update-images', images });
   }
@@ -137,6 +165,48 @@
     document.querySelectorAll('img').forEach(processImage);
   }
 
+  async function extractPageImage(sourceUrl) {
+    const url = resolveUrl(sourceUrl);
+    if (!url) throw new Error('Missing image URL');
+
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      return {
+        dataUrl: await blobToDataUrl(blob),
+        type: blob.type || 'application/octet-stream',
+        size: blob.size,
+        url
+      };
+    }
+
+    const response = await fetch(url, {
+      credentials: 'include',
+      cache: 'force-cache',
+      referrer: location.href
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    return {
+      dataUrl: await blobToDataUrl(blob),
+      type: blob.type || 'application/octet-stream',
+      size: blob.size,
+      url
+    };
+  }
+
+  async function blobToDataUrl(blob) {
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+  }
+
   function initialize() {
     scan();
 
@@ -170,6 +240,7 @@
       positionAll();
       scan();
     }, { passive: true });
+    window.addEventListener('scroll', positionAll, { passive: true });
   }
 
   function disable() {
@@ -182,7 +253,7 @@
     chrome.runtime.sendMessage({ action: 'selection-mode-state', enabled: false });
   }
 
-  chrome.runtime.onMessage.addListener((request) => {
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'set-select-mode') {
       enabled = Boolean(request.enabled);
       if (enabled) scan();
@@ -193,6 +264,24 @@
       document.querySelectorAll('.igr-overlay.igr-selected').forEach((overlay) => overlay.classList.remove('igr-selected'));
       document.querySelectorAll('.igr-badge.igr-visible').forEach((badge) => badge.classList.remove('igr-visible'));
       emitSelection();
+    }
+    if (request.action === 'extract-image-in-page') {
+      extractPageImage(request.url).then(sendResponse).catch(error => sendResponse({ error: error?.message || String(error) }));
+      return true;
+    }
+    if (request.action === 'collect-images') {
+      const items = Array.from(document.images)
+        .filter(imageIsEligible)
+        .map((image, index) => ({
+          url: getImageUrl(image),
+          name: getDisplayName(image, index),
+          pageUrl: location.href,
+          frameUrl: location.href,
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight
+        }))
+        .filter(entry => entry.url);
+      sendResponse({ images: items });
     }
   });
 
