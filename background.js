@@ -95,18 +95,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     }
 
-    case 'update-images':
-    case 'update-images-from-popup': {
+    case 'update-images': {
       if (senderTabId != null) {
-        tabImages.set(senderTabId, Array.isArray(request.images) ? request.images : []);
+        const frameId = Number.isInteger(sender.frameId) ? sender.frameId : 0;
+        const frameUrl = sender.url || '';
+        const incoming = (Array.isArray(request.images) ? request.images : []).map((entry) => ({
+          ...entry,
+          tabId: senderTabId,
+          frameId,
+          frameUrl: entry.frameUrl || frameUrl,
+          pageUrl: entry.pageUrl || frameUrl
+        }));
+        const existing = tabImages.get(senderTabId) || [];
+        const merged = existing.filter((entry) => entry.frameId !== frameId);
+        tabImages.set(senderTabId, merged.concat(incoming));
         lastActiveTabId = senderTabId;
         persistTabData(senderTabId);
-      } else {
-        const tabId = request.tabId ?? lastActiveTabId;
-        if (tabId != null) {
-          tabImages.set(tabId, Array.isArray(request.images) ? request.images : []);
-          persistTabData(tabId);
-        }
+      }
+      break;
+    }
+
+    case 'update-images-from-popup': {
+      const tabId = request.tabId ?? lastActiveTabId;
+      if (tabId != null) {
+        const normalized = (Array.isArray(request.images) ? request.images : []).map((entry) => ({
+          ...entry,
+          tabId: entry.tabId ?? tabId
+        }));
+        tabImages.set(tabId, normalized);
+        lastActiveTabId = tabId;
+        persistTabData(tabId);
       }
       break;
     }
@@ -200,7 +218,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     case 'download-images': {
-      handleDownload(request.images || [], request.settings || {}, request.tabId)
+      handleDownload(request.images || [], request.settings || {}, request.tabId ?? lastActiveTabId)
         .then((result) => sendResponse({ ok: true, result }))
         .catch((error) => {
           console.error('Download failed:', error);
