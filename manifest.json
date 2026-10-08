@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Image to PDF / CBZ Downloader",
-  "version": "2.0.0",
-  "description": "Select images on a webpage and download them as a combined PDF or CBZ comic archive.",
+  "version": "2.1.0",
+  "description": "Select images on a webpage and download the ordered selection as PDF or CBZ, with browser-native image acquisition.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
-    "downloads"
+    "downloads",
+    "contextMenus",
+    "webRequest"
   ],
   "host_permissions": [
     "<all_urls>"
