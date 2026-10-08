@@ -2,14 +2,13 @@
   "manifest_version": 3,
   "name": "Image to PDF / CBZ Downloader",
   "version": "2.1.0",
-  "description": "Select images on a webpage and download the ordered selection as PDF or CBZ, with browser-native image acquisition.",
+  "description": "Select images on a webpage and download the ordered selection as PDF or CBZ, with browser-context image acquisition.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "downloads",
-    "contextMenus",
-    "webRequest"
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
